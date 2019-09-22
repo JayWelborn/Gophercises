@@ -4,17 +4,12 @@ import (
 	"encoding/csv"
 	"flag"
 	"fmt"
-	"io"
 	"os"
-	"strings"
 )
 
-func poseQuestion(questionNo int, question string, answer string) bool {
-	fmt.Printf("Problem #%d: %s\n", questionNo, question)
-	var submitted string
-	fmt.Scan(&submitted)
-	submitted = strings.TrimSpace(submitted)
-	return submitted == answer
+type problem struct {
+	question string
+	answer   string
 }
 
 func main() {
@@ -23,25 +18,41 @@ func main() {
 
 	csvFile, err := os.Open(*fileName)
 	if err != nil {
-		fmt.Printf("Error opening file %s.\nClosing program", *fileName)
-		os.Exit(1)
+		exit(fmt.Sprintf("Error opening file %s.\nClosing program", *fileName))
 	}
 	defer csvFile.Close()
 
 	reader := csv.NewReader(csvFile)
-	current, correct := 0, 0
-	for {
-		line, err := reader.Read()
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			fmt.Println("Error reading line. Moving on.")
-			break
-		}
-		current += 1
-		if poseQuestion(current, line[0], line[1]) {
-			correct += 1
+	lines, err := reader.ReadAll()
+	if err != nil {
+		exit("Error reading lines")
+	}
+	problems := parseLines(lines)
+
+	correct := 0
+	for i, problem := range problems {
+		fmt.Printf("Problem #%d: %s = ", i+1, problem.question)
+		var answer string
+		fmt.Scanf("%s\n", &answer)
+		if answer == problem.answer {
+			correct++
 		}
 	}
-	fmt.Printf("%d out of %d correct\n", correct, current)
+
+	fmt.Printf("%d out of %d correct\n", correct, len(problems))
+}
+
+func parseLines(lines [][]string) []problem {
+	ret := make([]problem, len(lines))
+	for i, line := range lines {
+		ret[i] = problem{
+			line[0], line[1],
+		}
+	}
+	return ret
+}
+
+func exit(message string) {
+	fmt.Printf("%s\n", message)
+	os.Exit(1)
 }
